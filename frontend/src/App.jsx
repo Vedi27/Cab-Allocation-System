@@ -5,10 +5,11 @@ import RoutePanel from "./components/RoutePanel";
 import PrecomputePanel from "./components/PrecomputePanel";
 import RequestsPanel from "./components/RequestsPanel";
 import KthPanel from "./components/KthPanel";
+import SimPanel from "./components/SimPanel";
 import ComplexityPanel from "./components/ComplexityPanel";
 import "./App.css";
 
-const TABS = ["Route", "Precompute", "Requests", "k-th nearest", "Complexity"];
+const TABS = ["Route", "Precompute", "Requests", "Simulation", "k-th nearest", "Complexity"];
 
 export default function App() {
   const [city, setCity] = useState(null);
@@ -93,7 +94,8 @@ export default function App() {
             <span><i className="dot visited" /> visited</span>
             <span><i className="dot path" /> route</span>
             <span><i className="sq" /> free cab</span>
-            <span><i className="sq busy" /> busy cab</span>
+            <span><i className="sq pickup" /> cab heading to rider</span>
+            <span><i className="sq busy" /> cab on trip</span>
             <span><i className="ring" /> waiting rider</span>
           </div>
         </section>
@@ -110,6 +112,7 @@ export default function App() {
           {tab === "Requests" && (
             <RequestsPanel selected={selected} waiting={waiting} setWaiting={setWaiting} setCabs={setCabs} showResult={showResult} />
           )}
+          {tab === "Simulation" && <SimPanel setCabs={setCabs} setWaiting={setWaiting} />}
           {tab === "k-th nearest" && <KthPanel selected={selected} />}
           {tab === "Complexity" && <ComplexityPanel />}
         </section>

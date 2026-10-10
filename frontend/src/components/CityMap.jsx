@@ -59,10 +59,15 @@ export default function CityMap({ city, selected, onNodeClick, visited, path, ri
 
       {/* cabs */}
       {city.cabs.map((cab) => {
-        const p = pos(byId(cab.node));
+        let p = pos(byId(cab.node));
+        if (cab.next != null) {                       // mid-road: slide towards the next node
+          const q = pos(byId(cab.next));
+          p = { x: p.x + (q.x - p.x) * cab.progress, y: p.y + (q.y - p.y) * cab.progress };
+        }
+        const cls = cab.free ? "cab" : cab.status === "on_trip" ? "cab cab-busy" : "cab cab-pickup";
         return (
-          <g key={`cab${cab.id}`} transform={`translate(${p.x + 6}, ${p.y - 22})`}>
-            <rect width={20} height={14} rx={3} className={cab.free ? "cab" : "cab cab-busy"} />
+          <g key={`cab${cab.id}`} className="cab-g" transform={`translate(${p.x + 6}, ${p.y - 22})`}>
+            <rect width={20} height={14} rx={3} className={cls} />
             <text x={10} y={10.5} className="cab-label">{cab.id}</text>
           </g>
         );

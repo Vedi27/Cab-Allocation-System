@@ -27,5 +27,8 @@ export const api = {
   assign: () => post("/assign"),
   freeAllCabs: () => post("/cabs/free-all"),
   kthNearest: (node, k) => post("/kth-nearest", { node, k }),
+  sim: () => get("/sim"),
+  simConfig: (auto_assign, spawn_prob) => post("/sim/config", { auto_assign, spawn_prob }),
+  simTick: (dt = 1) => post("/sim/tick", { dt }),
   benchmark: () => get("/benchmark"),
 };

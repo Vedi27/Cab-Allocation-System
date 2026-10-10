@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from graph import build_city
+import simulation as sim_lib
 from algorithms import dijkstra as dj, floyd_warshall as fw, request_queue as rq
 from algorithms import merge_sort as ms, assignment as asg, kth_nearest as kn
 
@@ -31,6 +32,7 @@ city = build_city()
 queue = rq.RequestQueue()
 precomputed = {"dist": None}
 counter = {"arrival": 0, "request_id": 0}
+sim = sim_lib.new_state()
 
 
 # ---------- request bodies ----------
@@ -50,6 +52,15 @@ class KthIn(BaseModel):
     k: int
 
 
+class TickIn(BaseModel):
+    dt: int = 1                # time units to advance (max 50)
+
+
+class SimConfigIn(BaseModel):
+    auto_assign: bool = True
+    spawn_prob: float = 0.0    # chance per time unit that a new rider appears
+
+
 # ---------- helpers ----------
 def public_city():
     """City without the adjacency list (React only needs nodes, edges, cabs)."""
@@ -60,6 +71,39 @@ def timed(fn, *args):
     start = time.perf_counter()
     result = fn(*args)
     return result, round((time.perf_counter() - start) * 1000, 3)
+
+
+def enqueue(pickup, drop, priority):
+    counter["request_id"] += 1
+    counter["arrival"] += 1
+    req = {"id": counter["request_id"], "pickup": pickup, "drop": drop,
+           "priority": priority, "arrival": counter["arrival"], "created": sim["clock"]}
+    queue.push(req)
+    return req
+
+
+def assign_one():
+    """Pop the next request, give it the nearest free cab and start the trip."""
+    req = queue.pop()
+    if req is None:
+        return {"message": "No waiting requests"}
+
+    result = asg.assign_cab(req, city["cabs"], city["adj"])
+    if result["cab_id"] is None:
+        queue.push(req)                      # put the rider back
+        return {"message": "No free cab right now", "request": req}
+
+    trip = dj.dijkstra(city["adj"], req["pickup"], req["drop"])
+    for cab in city["cabs"]:
+        if cab["id"] == result["cab_id"]:
+            sim_lib.start_trip(cab, req, result["route"], trip, sim["clock"], city["adj"])
+    return {"request": req, **result, "trip": trip, "cabs": city["cabs"], "waiting": queue.all_items()}
+
+
+def sim_state():
+    return {"clock": sim["clock"], "cabs": city["cabs"], "waiting": queue.all_items(),
+            "stats": sim_lib.stats(sim, city["cabs"]), "trips": sim["trips"][-15:][::-1],
+            "auto_assign": sim["auto_assign"], "spawn_prob": sim["spawn_prob"]}
 
 
 # ---------- routes ----------
@@ -84,11 +128,12 @@ def get_city():
 
 @app.post("/reset")
 def reset():
-    global city, queue
+    global city, queue, sim
     city = build_city()
     queue = rq.RequestQueue()
     precomputed["dist"] = None
     counter["arrival"] = counter["request_id"] = 0
+    sim = sim_lib.new_state() | {"auto_assign": sim["auto_assign"], "spawn_prob": sim["spawn_prob"]}
     return public_city()
 
 
@@ -124,11 +169,7 @@ def distance(body: RouteIn):
 # Feature 4
 @app.post("/requests")
 def add_request(body: RideIn):
-    counter["request_id"] += 1
-    counter["arrival"] += 1
-    req = {"id": counter["request_id"], "pickup": body.pickup, "drop": body.drop,
-           "priority": body.priority, "arrival": counter["arrival"]}
-    queue.push(req)
+    req = enqueue(body.pickup, body.drop, body.priority)
     return {"added": req, "waiting": queue.all_items()}
 
 
@@ -140,27 +181,43 @@ def list_requests():
 # Feature 5
 @app.post("/assign")
 def assign_next():
-    req = queue.pop()
-    if req is None:
-        return {"message": "No waiting requests"}
-
-    result = asg.assign_cab(req, city["cabs"], city["adj"])
-    if result["cab_id"] is None:
-        queue.push(req)                      # put the rider back
-        return {"message": "No free cab right now", "request": req}
-
-    for cab in city["cabs"]:
-        if cab["id"] == result["cab_id"]:
-            cab["free"] = False
-    trip = dj.dijkstra(city["adj"], req["pickup"], req["drop"])
-    return {"request": req, **result, "trip": trip, "cabs": city["cabs"], "waiting": queue.all_items()}
+    return assign_one()
 
 
 @app.post("/cabs/free-all")
 def free_all_cabs():
     for cab in city["cabs"]:
-        cab["free"] = True
+        sim_lib.release(cab)                 # any trip in progress is cancelled
     return {"cabs": city["cabs"]}
+
+
+# Time-based simulation
+@app.get("/sim")
+def get_sim():
+    return sim_state()
+
+
+@app.post("/sim/config")
+def sim_config(body: SimConfigIn):
+    sim["auto_assign"] = body.auto_assign
+    sim["spawn_prob"] = min(max(body.spawn_prob, 0.0), 1.0)
+    return sim_state()
+
+
+@app.post("/sim/tick")
+def sim_tick(body: TickIn):
+    n_nodes = len(city["nodes"])
+    for _ in range(min(max(body.dt, 1), 50)):
+        sim["clock"] += 1
+        if sim["spawn_prob"] and sim_lib.rng.random() < sim["spawn_prob"]:
+            r = sim_lib.spawn_request(n_nodes, sim["clock"])
+            enqueue(r["pickup"], r["drop"], r["priority"])
+        sim_lib.advance_cabs(city["cabs"], sim["clock"], sim["trips"])
+        if sim["auto_assign"]:
+            while queue.size() and any(c["free"] for c in city["cabs"]):
+                if "trip" not in assign_one():
+                    break                    # no free cab can reach this rider
+    return sim_state()
 
 
 # Feature 11 (optional)

@@ -25,16 +25,27 @@ TODO: replace the placeholder:
 from algorithms.dijkstra import dijkstra
 from algorithms.merge_sort import merge_sort  # noqa: F401  (you will use it)
 
-IMPLEMENTED = False
+from algorithms.dijkstra import dijkstra
+from algorithms.merge_sort import merge_sort
+
+IMPLEMENTED = True
 
 
 def assign_cab(request, cabs, adj):
-    # ---- PLACEHOLDER: picks the first free cab, ignores distance ----
     free = [c for c in cabs if c["free"]]
-    if not free:
+    ranking = []
+    routes = {}
+    for cab in free:
+        res = dijkstra(adj, cab["node"], request["pickup"])
+        if res["distance"] is None:
+            continue                              # cannot reach the rider
+        routes[cab["id"]] = res
+        ranking.append({"cab": cab["id"], "distance": res["distance"]})
+
+    if not ranking:
         return {"cab_id": None, "ranking": [], "route": None, "implemented": IMPLEMENTED}
 
-    chosen = free[0]
-    route = dijkstra(adj, chosen["node"], request["pickup"])
-    ranking = [{"cab": c["id"], "distance": None} for c in free]
-    return {"cab_id": chosen["id"], "ranking": ranking, "route": route, "implemented": IMPLEMENTED}
+    ranking, _ = merge_sort(ranking, "distance")
+    chosen = ranking[0]["cab"]                    # greedy: nearest free cab
+    return {"cab_id": chosen, "ranking": ranking, "route": routes[chosen],
+            "implemented": IMPLEMENTED}

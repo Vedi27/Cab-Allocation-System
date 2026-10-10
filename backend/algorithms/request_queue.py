@@ -17,29 +17,56 @@ TODO: replace the placeholder list with a real array-based binary heap:
       count comparisons in self.operations
 """
 
-IMPLEMENTED = False
+IMPLEMENTED = True
 
 
 class RequestQueue:
+    """Array-based binary min-heap ordered by (priority, arrival)."""
+
     def __init__(self):
         self.items = []
         self.operations = 0
 
+    def _less(self, a, b):
+        self.operations += 1
+        return (a["priority"], a["arrival"]) < (b["priority"], b["arrival"])
+
     def push(self, request):
-        # ---- PLACEHOLDER: plain list, O(1) push ----
-        self.items.append(request)
+        h = self.items
+        h.append(request)
+        i = len(h) - 1
+        while i > 0:                              # sift up
+            p = (i - 1) // 2
+            if self._less(h[i], h[p]):
+                h[i], h[p] = h[p], h[i]
+                i = p
+            else:
+                break
 
     def pop(self):
-        # ---- PLACEHOLDER: linear search for the minimum, O(n) ----
-        if not self.items:
+        h = self.items
+        if not h:
             return None
-        best = min(self.items, key=lambda r: (r["priority"], r["arrival"]))
-        self.items.remove(best)
-        return best
+        top = h[0]
+        last = h.pop()
+        if h:
+            h[0] = last
+            i, n = 0, len(h)
+            while True:                           # sift down
+                l, r, s = 2 * i + 1, 2 * i + 2, i
+                if l < n and self._less(h[l], h[s]):
+                    s = l
+                if r < n and self._less(h[r], h[s]):
+                    s = r
+                if s == i:
+                    break
+                h[i], h[s] = h[s], h[i]
+                i = s
+        return top
 
     def size(self):
         return len(self.items)
 
     def all_items(self):
-        """Return the waiting requests (any order is fine)."""
-        return list(self.items)
+        """Waiting requests in service order (sorted copy; the heap is untouched)."""
+        return sorted(self.items, key=lambda r: (r["priority"], r["arrival"]))

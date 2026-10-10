@@ -19,10 +19,26 @@ Hint: start with dist[i][i] = 0, dist[u][v] = w for every edge, everything else 
       Then: for k: for i: for j: dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
 """
 
-IMPLEMENTED = False
+IMPLEMENTED = True
 
 
 def floyd_warshall(adj, n):
-    # ---- PLACEHOLDER: unknown distances everywhere ----
-    dist = [[None] * n for _ in range(n)]
-    return {"dist": dist, "operations": 0, "implemented": IMPLEMENTED}
+    INF = float("inf")
+    dist = [[INF] * n for _ in range(n)]
+    for i in range(n):
+        dist[i][i] = 0
+        for v, w in adj[i]:
+            if w < dist[i][v]:
+                dist[i][v] = w
+
+    operations = 0
+    for k in range(n):
+        dk = dist[k]
+        for i in range(n):
+            di = dist[i]
+            dik = di[k]
+            for j in range(n):
+                operations += 1
+                if dik + dk[j] < di[j]:
+                    di[j] = dik + dk[j]
+    return {"dist": dist, "operations": operations, "implemented": IMPLEMENTED}

@@ -47,6 +47,8 @@ main { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 1
 .rider { fill: none; stroke: #7c3aed; stroke-width: 2; stroke-dasharray: 3 2; pointer-events: none; }
 .cab { fill: var(--cab); stroke: #a16207; }
 .cab-busy { fill: var(--cab-busy); stroke: #4b5563; }
+.cab-pickup { fill: #fb923c; stroke: #9a3412; }
+.cab-g { transition: transform 0.2s linear; }
 .cab-label { font-size: 9px; font-weight: bold; text-anchor: middle; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
@@ -58,6 +60,7 @@ main { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 1
 .dot.path { background: var(--path); }
 .sq { background: var(--cab); border-radius: 2px; }
 .sq.busy { background: var(--cab-busy); }
+.sq.pickup { background: #fb923c; }
 .ring { border: 2px dashed #7c3aed; border-radius: 50%; }
 
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 8px; }

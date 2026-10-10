@@ -17,21 +17,48 @@ OUTPUT (keep these exact keys, the frontend depends on them)
         "implemented": True
     }
 
-TODO: replace the placeholder below with real Dijkstra.
+DONE.
 Hint: import heapq; heap holds (distance, node); keep dist{} and parent{};
       append each popped node to visited; count every relaxation in operations;
       rebuild the path by following parent[] back from dst.
 """
 
-IMPLEMENTED = False
+import heapq
+
+IMPLEMENTED = True
 
 
 def dijkstra(adj, src, dst):
-    # ---- PLACEHOLDER: just a straight line, so the app runs ----
-    return {
-        "path": [src, dst],
-        "distance": None,
-        "visited": [],
-        "operations": 0,
-        "implemented": IMPLEMENTED,
-    }
+    dist = {src: 0}
+    parent = {}
+    visited = []
+    done = set()
+    operations = 0
+    heap = [(0, src)]
+
+    while heap:
+        d, u = heapq.heappop(heap)
+        if u in done:
+            continue                      # stale heap entry
+        done.add(u)
+        visited.append(u)
+        if u == dst:
+            break
+        for v, w in adj[u]:
+            operations += 1               # one edge relaxation attempt
+            nd = d + w
+            if nd < dist.get(v, float("inf")):
+                dist[v] = nd
+                parent[v] = u
+                heapq.heappush(heap, (nd, v))
+
+    if dst not in done:
+        return {"path": [], "distance": None, "visited": visited,
+                "operations": operations, "implemented": IMPLEMENTED}
+
+    path = [dst]
+    while path[-1] != src:
+        path.append(parent[path[-1]])
+    path.reverse()
+    return {"path": path, "distance": dist[dst], "visited": visited,
+            "operations": operations, "implemented": IMPLEMENTED}
