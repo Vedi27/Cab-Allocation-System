@@ -1,0 +1,88 @@
+/* light theme colours - change them here */
+:root {
+  --card: #ffffff;
+  --border: #e3e7ef;
+  --text-muted: #6b7280;
+  --accent: #2563eb;
+  --road: #cbd2de;
+  --path: #f97316;
+  --visited: #bfdbfe;
+  --a: #16a34a;
+  --b: #dc2626;
+  --cab: #facc15;
+  --cab-busy: #9ca3af;
+}
+
+.app { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+h1 { font-size: 24px; margin: 0; }
+h3 { margin: 14px 0 6px; }
+h4 { margin: 12px 0 4px; }
+
+.badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 12px; padding: 3px 8px; border-radius: 12px; }
+.badge.done { background: #dcfce7; color: #166534; }
+.badge.todo { background: #fef3c7; color: #92400e; }
+
+main { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+
+.map-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 14px; }
+.map-toolbar label { margin-right: auto; }
+
+.city-map { width: 100%; height: auto; }
+.road { stroke: var(--road); stroke-width: 3; }
+.road-path { stroke: var(--path); stroke-width: 5; }
+.road-weight { font-size: 9px; fill: var(--text-muted); }
+.node-group { cursor: pointer; }
+.node { fill: #fff; stroke: #94a3b8; stroke-width: 1.5; }
+.node-visited { fill: var(--visited); }
+.node-path { fill: var(--path); stroke: var(--path); }
+.node-a { fill: var(--a); stroke: var(--a); }
+.node-b { fill: var(--b); stroke: var(--b); }
+.node-label { font-size: 7px; text-anchor: middle; pointer-events: none; }
+.rider { fill: none; stroke: #7c3aed; stroke-width: 2; stroke-dasharray: 3 2; pointer-events: none; }
+.cab { fill: var(--cab); stroke: #a16207; }
+.cab-busy { fill: var(--cab-busy); stroke: #4b5563; }
+.cab-label { font-size: 9px; font-weight: bold; text-anchor: middle; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 11px; height: 11px; vertical-align: middle; margin-right: 3px; }
+.dot { border-radius: 50%; }
+.dot.a { background: var(--a); }
+.dot.b { background: var(--b); }
+.dot.visited { background: var(--visited); }
+.dot.path { background: var(--path); }
+.sq { background: var(--cab); border-radius: 2px; }
+.sq.busy { background: var(--cab-busy); }
+.ring { border: 2px dashed #7c3aed; border-radius: 50%; }
+
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.tab { background: transparent; color: #374151; border: 1px solid transparent; }
+.tab.active { background: #eff6ff; color: var(--accent); border-color: #bfdbfe; }
+
+button {
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 7px 12px; margin: 4px 4px 4px 0; cursor: pointer; font-size: 14px;
+}
+button:disabled { background: #cbd5e1; cursor: not-allowed; }
+button.secondary { background: #fff; color: #374151; border: 1px solid var(--border); }
+select, input[type="number"] { padding: 6px; border: 1px solid var(--border); border-radius: 6px; margin-right: 4px; }
+input[type="number"] { width: 60px; }
+
+.hint { color: var(--text-muted); font-size: 13px; margin: 2px 0 8px; }
+.result { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 14px; }
+.result p { margin: 4px 0; }
+.warn { color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+
+.queue { padding-left: 18px; font-size: 14px; max-height: 150px; overflow-y: auto; }
+.tag { background: #fee2e2; color: #b91c1c; font-size: 11px; padding: 1px 6px; border-radius: 8px; }
+
+.small-table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+.small-table th, .small-table td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+.small-table th { background: #f1f5f9; }
+
+.center { text-align: center; margin-top: 80px; }
