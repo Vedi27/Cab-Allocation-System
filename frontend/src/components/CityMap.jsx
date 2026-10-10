@@ -6,7 +6,7 @@ const PAD = 30;
 
 const pos = (node) => ({ x: PAD + node.col * GAP, y: PAD + node.row * GAP });
 
-export default function CityMap({ city, selected, onNodeClick, visited, path, riders }) {
+export default function CityMap({ city, selected, onNodeClick, visited, path, riders, draft, showPlans }) {
   const width = PAD * 2 + (city.cols - 1) * GAP;
   const height = PAD * 2 + (city.rows - 1) * GAP;
   const byId = (id) => city.nodes[id];
@@ -35,14 +35,30 @@ export default function CityMap({ city, selected, onNodeClick, visited, path, ri
         );
       })}
 
+      {/* planned routes of busy cabs (Simulation tab) */}
+      {showPlans && city.cabs.filter((c) => c.plan).map((cab) => {
+        const end = pos(byId(cab.plan[cab.plan.length - 1][0]));
+        return (
+          <g key={`plan${cab.id}`}>
+            <polyline
+              points={cab.plan.map(([id]) => `${pos(byId(id)).x},${pos(byId(id)).y}`).join(" ")}
+              className={cab.status === "on_trip" ? "plan plan-trip" : "plan"}
+            />
+            <rect x={end.x - 5} y={end.y - 5} width={10} height={10} className="drop-mark" />
+          </g>
+        );
+      })}
+
       {/* intersections */}
       {city.nodes.map((n) => {
         const p = pos(n);
         let cls = "node";
         if (visitedSet.has(n.id)) cls += " node-visited";
         if (path.includes(n.id)) cls += " node-path";
-        if (n.id === selected.a) cls += " node-a";
-        if (n.id === selected.b) cls += " node-b";
+        const a = draft ? draft.pickup : selected.a;
+        const b = draft ? draft.drop : selected.b;
+        if (n.id === a) cls += " node-a";
+        if (n.id === b) cls += " node-b";
         return (
           <g key={n.id} onClick={() => onNodeClick(n.id)} className="node-group">
             <circle cx={p.x} cy={p.y} r={9} className={cls} />

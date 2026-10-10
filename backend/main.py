@@ -8,7 +8,7 @@ Test: open http://localhost:8000/docs
 """
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -56,6 +56,12 @@ class TickIn(BaseModel):
     dt: int = 1                # time units to advance (max 50)
 
 
+class SimRideIn(BaseModel):
+    pickup: int
+    drop: int
+    priority: int = 1
+
+
 class SimConfigIn(BaseModel):
     auto_assign: bool = True
     spawn_prob: float = 0.0    # chance per time unit that a new rider appears
@@ -98,6 +104,13 @@ def assign_one():
         if cab["id"] == result["cab_id"]:
             sim_lib.start_trip(cab, req, result["route"], trip, sim["clock"], city["adj"])
     return {"request": req, **result, "trip": trip, "cabs": city["cabs"], "waiting": queue.all_items()}
+
+
+def run_assignments():
+    """Match waiting riders to free cabs until one side runs out."""
+    while queue.size() and any(c["free"] for c in city["cabs"]):
+        if "trip" not in assign_one():
+            break                            # no free cab can reach this rider
 
 
 def sim_state():
@@ -214,10 +227,28 @@ def sim_tick(body: TickIn):
             enqueue(r["pickup"], r["drop"], r["priority"])
         sim_lib.advance_cabs(city["cabs"], sim["clock"], sim["trips"])
         if sim["auto_assign"]:
-            while queue.size() and any(c["free"] for c in city["cabs"]):
-                if "trip" not in assign_one():
-                    break                    # no free cab can reach this rider
+            run_assignments()
     return sim_state()
+
+
+@app.post("/sim/ride")
+def sim_ride(body: SimRideIn):
+    """A user clicked the map: queue the rider and give them the nearest free cab now."""
+    n = len(city["nodes"])
+    if not (0 <= body.pickup < n and 0 <= body.drop < n):
+        raise HTTPException(400, "Unknown node")
+    if body.pickup == body.drop:
+        raise HTTPException(400, "Pickup and drop must be different")
+    req = enqueue(body.pickup, body.drop, 0 if body.priority == 0 else 1)
+    run_assignments()
+    cab = next((c for c in city["cabs"] if c.get("request") and c["request"]["id"] == req["id"]), None)
+    if cab:
+        outcome = {"status": "assigned", "cab": cab["id"], "pickup_eta": cab["pickup_time"] - sim["clock"],
+                   "trip_eta": cab["end_time"] - sim["clock"]}
+    else:
+        outcome = {"status": "queued", "position": 1 + sum(
+            1 for r in queue.all_items() if (r["priority"], r["arrival"]) < (req["priority"], req["arrival"]))}
+    return {"ride": req, **outcome, **sim_state()}
 
 
 # Feature 11 (optional)

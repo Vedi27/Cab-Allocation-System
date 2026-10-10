@@ -30,5 +30,6 @@ export const api = {
   sim: () => get("/sim"),
   simConfig: (auto_assign, spawn_prob) => post("/sim/config", { auto_assign, spawn_prob }),
   simTick: (dt = 1) => post("/sim/tick", { dt }),
+  simRide: (pickup, drop, priority) => post("/sim/ride", { pickup, drop, priority }),
   benchmark: () => get("/benchmark"),
 };

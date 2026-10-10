@@ -1,57 +1,50 @@
-// Time-based simulation: a clock ticks, cabs drive their routes, riders appear and get assigned.
+// Time-based simulation controls. The clock loop itself lives in App.jsx.
 // 1 time unit = 1 unit of road weight (the number written on each road).
-import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 
-export default function SimPanel({ setCabs, setWaiting }) {
-  const [sim, setSim] = useState(null);
-  const [running, setRunning] = useState(false);
-  const [speed, setSpeed] = useState(4);            // time units per second
-  const [auto, setAuto] = useState(true);
-  const [spawn, setSpawn] = useState(0.1);
-  const busy = useRef(false);
+const STATUS = { to_pickup: "heading to rider", on_trip: "on trip" };
 
-  function apply(s) {
-    setSim(s);
-    setCabs(s.cabs);
-    setWaiting(s.waiting);
-  }
-
-  useEffect(() => {
-    api.simConfig(true, 0.1).then(apply).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!running) return;
-    const t = setInterval(async () => {
-      if (busy.current) return;                     // skip if the last tick has not returned
-      busy.current = true;
-      try { apply(await api.simTick(1)); } finally { busy.current = false; }
-    }, 1000 / speed);
-    return () => clearInterval(t);
-  }, [running, speed]);
-
-  const changeConfig = (a, s) => { setAuto(a); setSpawn(s); api.simConfig(a, s).then(apply); };
-  const step = async () => apply(await api.simTick(1));
-
+export default function SimPanel({ sim, applySim, running, setRunning, speed, setSpeed, lastRide }) {
   if (!sim) return <p>Loading...</p>;
   const st = sim.stats;
+  const changeConfig = (auto, spawn) => api.simConfig(auto, spawn).then(applySim);
+  const step = async () => applySim(await api.simTick(1));
+  const busy = sim.cabs.filter((c) => !c.free);
 
   return (
     <div>
       <h3>Simulation</h3>
-      <p className="hint">Each road number is its travel time. The clock counts those units, so a cab needs 5 ticks to cross a road marked 5.</p>
+      <p className="hint">
+        Click a node on the map to create a rider there, then pick the drop. The nearest free cab is
+        sent straight away. If all cabs are busy the rider waits in the queue. Each road number is its travel time.
+      </p>
       <p><b>Clock: {sim.clock}</b></p>
       <button onClick={() => setRunning(!running)}>{running ? "Pause" : "Play"}</button>
       <button className="secondary" disabled={running} onClick={step}>Step +1</button>
       <p>Speed: {speed} ticks/sec <input type="range" min="1" max="20" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /></p>
-      <p>New riders: {Math.round(spawn * 100)}% chance per tick
-        <input type="range" min="0" max="0.5" step="0.05" value={spawn} onChange={(e) => changeConfig(auto, Number(e.target.value))} />
+
+      {lastRide && !lastRide.error && (
+        <div className="result">
+          {lastRide.status === "assigned"
+            ? <p className="ok">Rider #{lastRide.ride.id}: cab {lastRide.cab} on its way. Pickup in {lastRide.pickup_eta}, arrives in {lastRide.trip_eta}.</p>
+            : <p>Rider #{lastRide.ride.id}: all cabs busy, queued at position {lastRide.position}.</p>}
+        </div>
+      )}
+
+      <p>Random riders: {Math.round(sim.spawn_prob * 100)}% per tick
+        <input type="range" min="0" max="0.5" step="0.05" value={sim.spawn_prob} onChange={(e) => changeConfig(sim.auto_assign, Number(e.target.value))} />
       </p>
-      <label><input type="checkbox" checked={auto} onChange={(e) => changeConfig(e.target.checked, spawn)} /> Auto-assign waiting riders to free cabs</label>
+      <label><input type="checkbox" checked={sim.auto_assign} onChange={(e) => changeConfig(e.target.checked, sim.spawn_prob)} /> Auto-assign waiting riders when a cab frees up</label>
+
+      <h4>Active rides ({busy.length})</h4>
+      <ul className="queue">
+        {busy.map((c) => (
+          <li key={c.id}>Cab {c.id}: #{c.request.id} {c.request.pickup} → {c.request.drop}, {STATUS[c.status]}, done in {c.end_time - sim.clock}</li>
+        ))}
+      </ul>
 
       <h4>Stats</h4>
-      <p>Waiting: {sim.waiting.length} &nbsp; Completed: {st.completed} &nbsp; Busy cabs: {st.busy_cabs}/{sim.cabs.length} ({st.utilisation}%)</p>
+      <p>Waiting: {sim.waiting.length} &nbsp; Completed: {st.completed} &nbsp; Busy: {st.busy_cabs}/{sim.cabs.length} ({st.utilisation}%)</p>
       <p>Avg wait: {st.avg_wait ?? "-"} &nbsp; Max wait: {st.max_wait ?? "-"} &nbsp; Avg trip: {st.avg_trip ?? "-"}</p>
 
       <h4>Recent trips</h4>

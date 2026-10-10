@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import CityMap from "./components/CityMap";
 import RoutePanel from "./components/RoutePanel";
@@ -6,6 +6,7 @@ import PrecomputePanel from "./components/PrecomputePanel";
 import RequestsPanel from "./components/RequestsPanel";
 import KthPanel from "./components/KthPanel";
 import SimPanel from "./components/SimPanel";
+import RideDialog from "./components/RideDialog";
 import ComplexityPanel from "./components/ComplexityPanel";
 import "./App.css";
 
@@ -19,6 +20,14 @@ export default function App() {
   const [selected, setSelected] = useState({ a: null, b: null });
   const [waiting, setWaiting] = useState([]);
 
+  // simulation (lives here so the clock keeps running when you switch tabs)
+  const [sim, setSim] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [speed, setSpeed] = useState(4);              // ticks per second
+  const [draft, setDraft] = useState(null);           // ride being created: {pickup, drop}
+  const [lastRide, setLastRide] = useState(null);
+  const ticking = useRef(false);
+
   // what the map highlights
   const [visited, setVisited] = useState([]);
   const [path, setPath] = useState([]);
@@ -30,6 +39,35 @@ export default function App() {
     api.status().then(setStatus).catch(() => {});
     api.requests().then((r) => setWaiting(r.waiting)).catch(() => {});
   }, []);
+
+  function applySim(s) {
+    setSim(s);
+    setCity((c) => (c ? { ...c, cabs: s.cabs } : c));
+    setWaiting(s.waiting);
+  }
+
+  useEffect(() => {
+    api.sim().then(applySim).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(async () => {
+      if (ticking.current) return;                    // previous tick still in flight
+      ticking.current = true;
+      try { applySim(await api.simTick(1)); } finally { ticking.current = false; }
+    }, 1000 / speed);
+    return () => clearInterval(t);
+  }, [running, speed]);
+
+  async function requestRide(pickup, drop, priority) {
+    const r = await api.simRide(pickup, drop, priority);
+    if (r.detail) { setLastRide({ error: r.detail }); return; }
+    applySim(r);
+    setLastRide(r);
+    setDraft(null);
+    setRunning(true);                                 // nothing moves unless the clock runs
+  }
 
   // "Show Algorithm" mode: reveal visited nodes one by one
   useEffect(() => {
@@ -45,6 +83,12 @@ export default function App() {
   }
 
   function handleNodeClick(id) {
+    if (tab === "Simulation") {                       // click = create a rider
+      if (!draft) setDraft({ pickup: id, drop: null });
+      else if (id === draft.pickup) setDraft(null);
+      else setDraft({ ...draft, drop: id });
+      return;
+    }
     if (selected.a === null || selected.b !== null) setSelected({ a: id, b: null });
     else setSelected({ a: selected.a, b: id });
   }
@@ -52,6 +96,9 @@ export default function App() {
   async function resetCity() {
     setCity(await api.reset());
     setWaiting([]);
+    setDraft(null);
+    setLastRide(null);
+    api.sim().then(setSim);
     setSelected({ a: null, b: null });
     showResult([], []);
   }
@@ -60,7 +107,9 @@ export default function App() {
   if (!city) return <p className="center">Loading city...</p>;
 
   const animationDone = shownCount >= visited.length;
-  const setCabs = (cabs) => setCity({ ...city, cabs });
+  const setCabs = (cabs) => setCity((c) => ({ ...c, cabs }));
+  // riders to ring on the map: still waiting, or assigned but not yet picked up
+  const riders = [...waiting, ...city.cabs.filter((c) => c.status === "to_pickup").map((c) => c.request)];
 
   return (
     <div className="app">
@@ -80,14 +129,21 @@ export default function App() {
             <button className="secondary" onClick={() => { setSelected({ a: null, b: null }); showResult([], []); }}>Clear</button>
             <button className="secondary" onClick={resetCity}>Reset city</button>
           </div>
-          <CityMap
-            city={city}
-            selected={selected}
-            onNodeClick={handleNodeClick}
-            visited={visited.slice(0, shownCount)}
-            path={animationDone ? path : []}
-            riders={waiting}
-          />
+          <div className="map-wrap">
+            <CityMap
+              city={city}
+              selected={selected}
+              onNodeClick={handleNodeClick}
+              visited={visited.slice(0, shownCount)}
+              path={animationDone ? path : []}
+              riders={riders}
+              draft={tab === "Simulation" ? draft : null}
+              showPlans={tab === "Simulation"}
+            />
+            {tab === "Simulation" && draft && (
+              <RideDialog city={city} draft={draft} setDraft={setDraft} onSubmit={requestRide} error={lastRide?.error} />
+            )}
+          </div>
           <div className="legend">
             <span><i className="dot a" /> A</span>
             <span><i className="dot b" /> B</span>
@@ -112,7 +168,7 @@ export default function App() {
           {tab === "Requests" && (
             <RequestsPanel selected={selected} waiting={waiting} setWaiting={setWaiting} setCabs={setCabs} showResult={showResult} />
           )}
-          {tab === "Simulation" && <SimPanel setCabs={setCabs} setWaiting={setWaiting} />}
+          {tab === "Simulation" && <SimPanel sim={sim} applySim={applySim} running={running} setRunning={setRunning} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
           {tab === "k-th nearest" && <KthPanel selected={selected} />}
           {tab === "Complexity" && <ComplexityPanel />}
         </section>
