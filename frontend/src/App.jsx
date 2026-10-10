@@ -2,21 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import CityMap from "./components/CityMap";
 import RoutePanel from "./components/RoutePanel";
-import PrecomputePanel from "./components/PrecomputePanel";
-import RequestsPanel from "./components/RequestsPanel";
 import KthPanel from "./components/KthPanel";
 import SimPanel from "./components/SimPanel";
 import RideDialog from "./components/RideDialog";
 import ComplexityPanel from "./components/ComplexityPanel";
 import "./App.css";
 
-const TABS = ["Route", "Precompute", "Requests", "Simulation", "k-th nearest", "Complexity"];
+const TABS = ["Simulation", "Route", "k-th nearest", "Complexity"];
 
 export default function App() {
   const [city, setCity] = useState(null);
   const [status, setStatus] = useState({});
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState("Route");
+  const [tab, setTab] = useState("Simulation");
   const [selected, setSelected] = useState({ a: null, b: null });
   const [waiting, setWaiting] = useState([]);
 
@@ -107,7 +105,6 @@ export default function App() {
   if (!city) return <p className="center">Loading city...</p>;
 
   const animationDone = shownCount >= visited.length;
-  const setCabs = (cabs) => setCity((c) => ({ ...c, cabs }));
   // riders to ring on the map: still waiting, or assigned but not yet picked up
   const riders = [...waiting, ...city.cabs.filter((c) => c.status === "to_pickup").map((c) => c.request)];
 
@@ -164,10 +161,6 @@ export default function App() {
           </nav>
 
           {tab === "Route" && <RoutePanel selected={selected} showResult={showResult} />}
-          {tab === "Precompute" && <PrecomputePanel selected={selected} />}
-          {tab === "Requests" && (
-            <RequestsPanel selected={selected} waiting={waiting} setWaiting={setWaiting} setCabs={setCabs} showResult={showResult} />
-          )}
           {tab === "Simulation" && <SimPanel sim={sim} applySim={applySim} running={running} setRunning={setRunning} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
           {tab === "k-th nearest" && <KthPanel selected={selected} />}
           {tab === "Complexity" && <ComplexityPanel />}

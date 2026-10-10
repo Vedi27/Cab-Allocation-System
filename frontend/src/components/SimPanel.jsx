@@ -31,10 +31,7 @@ export default function SimPanel({ sim, applySim, running, setRunning, speed, se
         </div>
       )}
 
-      <p>Random riders: {Math.round(sim.spawn_prob * 100)}% per tick
-        <input type="range" min="0" max="0.5" step="0.05" value={sim.spawn_prob} onChange={(e) => changeConfig(sim.auto_assign, Number(e.target.value))} />
-      </p>
-      <label><input type="checkbox" checked={sim.auto_assign} onChange={(e) => changeConfig(e.target.checked, sim.spawn_prob)} /> Auto-assign waiting riders when a cab frees up</label>
+      <label><input type="checkbox" checked={sim.auto_assign} onChange={(e) => changeConfig(e.target.checked, 0)} /> Auto-assign waiting riders when a cab frees up</label>
 
       <h4>Active rides ({busy.length})</h4>
       <ul className="queue">
