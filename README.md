@@ -62,21 +62,3 @@ in the app needs to change. When you finish one:
 3. Refresh the page; its badge turns green and the map shows the real result.
 
 Suggested order: dijkstra → merge_sort → assignment → request_queue → floyd_warshall → kth_nearest.
-
-## Work split
-
-| Person A (algorithms)                         | Person B (frontend + analysis)                        |
-| --------------------------------------------- | ----------------------------------------------------- |
-| dijkstra.py, floyd_warshall.py                | Improve the map animation and styling                 |
-| request_queue.py, merge_sort.py               | Add a chart in ComplexityPanel.jsx                    |
-| assignment.py, kth_nearest.py                 | Complexity analysis write-up for the report           |
-
-Swap a couple of algorithms between you so both can explain them in the viva.
-
-## Working together with Git
-
-1. One person creates a GitHub repo, pushes this folder, adds the partner as collaborator.
-2. Each person works on a separate branch, e.g. `git checkout -b dijkstra`.
-3. Since each algorithm is its own file, two people rarely edit the same file,
-   so merges stay clean. Push, open a pull request, merge into `main`.
-4. `git pull` on `main` before starting new work.
