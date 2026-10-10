@@ -112,11 +112,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Cab Allocation System</h1>
-        <div className="badges">
-          {Object.entries(status).map(([name, done]) => (
-            <span key={name} className={done ? "badge done" : "badge todo"}>{name}</span>
-          ))}
-        </div>
+        
       </header>
 
       <main>
