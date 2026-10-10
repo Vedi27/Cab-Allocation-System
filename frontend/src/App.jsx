@@ -4,7 +4,7 @@ import CityMap from "./components/CityMap";
 import RoutePanel from "./components/RoutePanel";
 import KthPanel from "./components/KthPanel";
 import SimPanel from "./components/SimPanel";
-import RideDialog from "./components/RideDialog";
+import BookingPanel from "./components/BookingPanel";
 import ComplexityPanel from "./components/ComplexityPanel";
 import "./App.css";
 
@@ -24,6 +24,8 @@ export default function App() {
   const [speed, setSpeed] = useState(4);              // ticks per second
   const [draft, setDraft] = useState(null);           // ride being created: {pickup, drop}
   const [lastRide, setLastRide] = useState(null);
+  const [hover, setHover] = useState(null);           // node under the mouse while choosing a drop
+  const [quote, setQuote] = useState(null);           // preview of the ride being created
   const ticking = useRef(false);
 
   // what the map highlights
@@ -58,12 +60,42 @@ export default function App() {
     return () => clearInterval(t);
   }, [running, speed]);
 
+  // live preview: route, trip time and nearest cab for the hovered (or chosen) drop
+  const target = draft ? (draft.drop ?? hover) : null;
+  useEffect(() => {
+    if (tab !== "Simulation" || !draft || target === null || target === draft.pickup) { setQuote(null); return; }
+    let stale = false;
+    const t = setTimeout(async () => {
+      const q = await api.simQuote(draft.pickup, target);
+      if (!stale && !q.detail) setQuote({ drop: target, ...q });
+    }, 60);
+    return () => { stale = true; clearTimeout(t); };
+  }, [tab, draft?.pickup, target]);
+
+  // path-finding preview: reveal Dijkstra's visited nodes one by one, then show the shortest path
+  const [previewShown, setPreviewShown] = useState(0);
+  useEffect(() => {
+    setPreviewShown(0);
+    if (!quote) return;
+    const total = quote.visited.length;
+    const step = Math.max(1, Math.ceil(total / 60));   // whole search takes ~0.3s
+    const t = setInterval(() => setPreviewShown((n) => (n + step >= total ? (clearInterval(t), total) : n + step)), 25);
+    return () => clearInterval(t);
+  }, [quote]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") setDraft(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   async function requestRide(pickup, drop, priority) {
     const r = await api.simRide(pickup, drop, priority);
     if (r.detail) { setLastRide({ error: r.detail }); return; }
     applySim(r);
     setLastRide(r);
     setDraft(null);
+    setHover(null);
     setRunning(true);                                 // nothing moves unless the clock runs
   }
 
@@ -115,7 +147,11 @@ export default function App() {
         
       </header>
 
-      <main>
+      <main className={tab === "Simulation" ? "with-booking" : ""}>
+        {tab === "Simulation" && (
+          <BookingPanel draft={draft} setDraft={setDraft} quote={quote} onSubmit={requestRide}
+                        lastRide={lastRide} dismissLast={() => setLastRide(null)} error={lastRide?.error} />
+        )}
         <section className="card map-card">
           <div className="map-toolbar">
             <label><input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} /> Show algorithm (animate)</label>
@@ -127,15 +163,14 @@ export default function App() {
               city={city}
               selected={selected}
               onNodeClick={handleNodeClick}
-              visited={visited.slice(0, shownCount)}
-              path={animationDone ? path : []}
+              visited={tab === "Simulation" ? (quote ? quote.visited.slice(0, previewShown) : []) : visited.slice(0, shownCount)}
+              path={tab === "Simulation" ? [] : animationDone ? path : []}
               riders={riders}
               draft={tab === "Simulation" ? draft : null}
+              onNodeHover={setHover}
+              preview={tab === "Simulation" && draft && quote && previewShown >= quote.visited.length ? quote.path : []}
               showPlans={tab === "Simulation"}
             />
-            {tab === "Simulation" && draft && (
-              <RideDialog city={city} draft={draft} setDraft={setDraft} onSubmit={requestRide} error={lastRide?.error} />
-            )}
           </div>
           <div className="legend">
             <span><i className="dot a" /> A</span>

@@ -14,10 +14,7 @@ export default function SimPanel({ sim, applySim, running, setRunning, speed, se
   return (
     <div>
       <h3>Simulation</h3>
-      <p className="hint">
-        Click a node on the map to create a rider there, then pick the drop. The nearest free cab is
-        sent straight away. If all cabs are busy the rider waits in the queue. Each road number is its travel time.
-      </p>
+      <p className="hint">Book rides from the panel on the left. Each road number is its travel time in minutes, and the clock counts those minutes.</p>
       <p><b>Clock: {sim.clock}</b></p>
       <button onClick={() => setRunning(!running)}>{running ? "Pause" : "Play"}</button>
       <button className="secondary" disabled={running} onClick={step}>Step +1</button>

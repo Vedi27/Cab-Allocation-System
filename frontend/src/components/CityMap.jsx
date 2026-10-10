@@ -6,7 +6,7 @@ const PAD = 30;
 
 const pos = (node) => ({ x: PAD + node.col * GAP, y: PAD + node.row * GAP });
 
-export default function CityMap({ city, selected, onNodeClick, visited, path, riders, draft, showPlans }) {
+export default function CityMap({ city, selected, onNodeClick, visited, path, riders, draft, showPlans, onNodeHover, preview = [] }) {
   const width = PAD * 2 + (city.cols - 1) * GAP;
   const height = PAD * 2 + (city.rows - 1) * GAP;
   const byId = (id) => city.nodes[id];
@@ -16,6 +16,11 @@ export default function CityMap({ city, selected, onNodeClick, visited, path, ri
   for (let i = 0; i + 1 < path.length; i++) {
     pathEdges.add(`${path[i]}-${path[i + 1]}`);
     pathEdges.add(`${path[i + 1]}-${path[i]}`);
+  }
+  const previewEdges = new Set();
+  for (let i = 0; i + 1 < preview.length; i++) {
+    previewEdges.add(`${preview[i]}-${preview[i + 1]}`);
+    previewEdges.add(`${preview[i + 1]}-${preview[i]}`);
   }
   const visitedSet = new Set(visited);
   const riderPickups = new Set(riders.map((r) => r.pickup));
@@ -27,9 +32,10 @@ export default function CityMap({ city, selected, onNodeClick, visited, path, ri
         const a = pos(byId(e.u));
         const b = pos(byId(e.v));
         const onPath = pathEdges.has(`${e.u}-${e.v}`);
+        const onPreview = previewEdges.has(`${e.u}-${e.v}`);
         return (
           <g key={`${e.u}-${e.v}`}>
-            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={onPath ? "road road-path" : "road"} />
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={onPreview ? "road road-preview" : onPath ? "road road-path" : "road"} />
             <text x={(a.x + b.x) / 2 + 4} y={(a.y + b.y) / 2 - 4} className="road-weight">{e.w}</text>
           </g>
         );
@@ -60,12 +66,25 @@ export default function CityMap({ city, selected, onNodeClick, visited, path, ri
         if (n.id === a) cls += " node-a";
         if (n.id === b) cls += " node-b";
         return (
-          <g key={n.id} onClick={() => onNodeClick(n.id)} className="node-group">
+          <g key={n.id} onClick={() => onNodeClick(n.id)} className="node-group"
+             onMouseEnter={() => onNodeHover && onNodeHover(n.id)} onMouseLeave={() => onNodeHover && onNodeHover(null)}>
             <circle cx={p.x} cy={p.y} r={9} className={cls} />
             <text x={p.x} y={p.y + 3} className="node-label">{n.id}</text>
           </g>
         );
       })}
+
+      {/* ride being created: pulsing pickup and a flag on the destination */}
+      {draft && (() => {
+        const a = pos(byId(draft.pickup));
+        const d = draft.drop === null ? null : pos(byId(draft.drop));
+        return (
+          <g pointerEvents="none">
+            <circle cx={a.x} cy={a.y} r={14} className="pickup-pulse" />
+            {d && <circle cx={d.x} cy={d.y} r={14} className="drop-ring" />}
+          </g>
+        );
+      })()}
 
       {/* waiting riders */}
       {city.nodes.filter((n) => riderPickups.has(n.id)).map((n) => {

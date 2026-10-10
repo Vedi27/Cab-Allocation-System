@@ -251,6 +251,33 @@ def sim_ride(body: SimRideIn):
     return {"ride": req, **outcome, **sim_state()}
 
 
+def fares(trip_time):
+    """Display-only fare estimate: base + per-minute rate; priority costs 1.5x."""
+    standard = 30 + 6 * trip_time
+    return {"standard": standard, "priority": round(standard * 1.5)}
+
+
+@app.post("/sim/quote")
+def sim_quote(body: SimRideIn):
+    """Preview a ride without creating it: trip route/time, nearest free cab, or the wait if none."""
+    n = len(city["nodes"])
+    if not (0 <= body.pickup < n and 0 <= body.drop < n) or body.pickup == body.drop:
+        raise HTTPException(400, "Choose two different nodes")
+    trip = dj.dijkstra(city["adj"], body.pickup, body.drop)
+    pick = asg.assign_cab({"pickup": body.pickup}, city["cabs"], city["adj"])
+    out = {"path": trip["path"], "trip_time": trip["distance"], "cab": pick["cab_id"],
+           "visited": trip["visited"], "operations": trip["operations"],
+           "pickup_eta": pick["route"]["distance"] if pick["cab_id"] else None,
+           "cab_path": pick["route"]["path"] if pick["cab_id"] else [],
+           "fares": fares(trip["distance"]),
+           "queued": 0, "next_free_in": None}
+    if pick["cab_id"] is None:
+        out["queued"] = queue.size()
+        ends = [c["end_time"] - sim["clock"] for c in city["cabs"] if c.get("end_time") and not c["free"]]
+        out["next_free_in"] = min(ends) if ends else None
+    return out
+
+
 # Feature 11 (optional)
 @app.post("/kth-nearest")
 def kth_nearest(body: KthIn):
