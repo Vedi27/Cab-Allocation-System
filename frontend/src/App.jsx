@@ -18,10 +18,9 @@ export default function App() {
   const [selected, setSelected] = useState({ a: null, b: null });
   const [waiting, setWaiting] = useState([]);
 
-  // simulation (lives here so the clock keeps running when you switch tabs)
+  // simulation (lives here so it keeps running when you switch tabs)
   const [sim, setSim] = useState(null);
-  const [running, setRunning] = useState(false);
-  const [speed, setSpeed] = useState(4);              // ticks per second
+  const [speed, setSpeed] = useState(1);              // 1x = 4 ticks per second
   const [draft, setDraft] = useState(null);           // ride being created: {pickup, drop}
   const [lastRide, setLastRide] = useState(null);
   const [hover, setHover] = useState(null);           // node under the mouse while choosing a drop
@@ -50,15 +49,17 @@ export default function App() {
     api.sim().then(applySim).catch(() => {});
   }, []);
 
+  // runs by itself while any cab is busy (or riders wait for one), and rests when idle
+  const active = !!sim && (sim.cabs.some((c) => !c.free) || (sim.auto_assign && sim.waiting.length > 0));
   useEffect(() => {
-    if (!running) return;
+    if (!active) return;
     const t = setInterval(async () => {
       if (ticking.current) return;                    // previous tick still in flight
       ticking.current = true;
       try { applySim(await api.simTick(1)); } finally { ticking.current = false; }
-    }, 1000 / speed);
+    }, 1000 / (4 * speed));
     return () => clearInterval(t);
-  }, [running, speed]);
+  }, [active, speed]);
 
   // live preview: route, trip time and nearest cab for the hovered (or chosen) drop
   const target = draft ? (draft.drop ?? hover) : null;
@@ -96,7 +97,6 @@ export default function App() {
     setLastRide(r);
     setDraft(null);
     setHover(null);
-    setRunning(true);                                 // nothing moves unless the clock runs
   }
 
   // "Show Algorithm" mode: reveal visited nodes one by one
@@ -192,7 +192,7 @@ export default function App() {
           </nav>
 
           {tab === "Route" && <RoutePanel selected={selected} showResult={showResult} />}
-          {tab === "Simulation" && <SimPanel sim={sim} applySim={applySim} running={running} setRunning={setRunning} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
+          {tab === "Simulation" && <SimPanel sim={sim} applySim={applySim} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
           {tab === "k-th nearest" && <KthPanel selected={selected} />}
           {tab === "Complexity" && <ComplexityPanel />}
         </section>

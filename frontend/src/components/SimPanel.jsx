@@ -1,29 +1,31 @@
-// Time-based simulation controls. The clock loop itself lives in App.jsx.
+// Simulation side panel: speed, active rides and stats. The tick loop itself lives in App.jsx.
 // 1 time unit = 1 unit of road weight (the number written on each road).
 import { api } from "../api";
 
 const STATUS = { to_pickup: "heading to rider", on_trip: "on trip" };
 
-export default function SimPanel({ sim, applySim, running, setRunning, speed, setSpeed, lastRide }) {
+export default function SimPanel({ sim, applySim, speed, setSpeed, lastRide }) {
   if (!sim) return <p>Loading...</p>;
   const st = sim.stats;
   const changeConfig = (auto, spawn) => api.simConfig(auto, spawn).then(applySim);
-  const step = async () => applySim(await api.simTick(1));
   const busy = sim.cabs.filter((c) => !c.free);
 
   return (
     <div>
       <h3>Simulation</h3>
-      <p className="hint">Book rides from the panel on the left. Each road number is its travel time in minutes, and the clock counts those minutes.</p>
-      <p><b>Clock: {sim.clock}</b></p>
-      <button onClick={() => setRunning(!running)}>{running ? "Pause" : "Play"}</button>
-      <button className="secondary" disabled={running} onClick={step}>Step +1</button>
-      <p>Speed: {speed} ticks/sec <input type="range" min="1" max="20" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /></p>
+      <p className="hint">Book rides from the panel on the left. Each road number is its travel time in minutes.</p>
+      <div className="speed">
+        <div className="speed-head"><span>Simulation speed</span></div>
+        <input type="range" min="0.5" max="5" step="0.5" value={speed}
+               style={{ "--fill": `${((speed - 0.5) / 4.5) * 100}%` }}
+               onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Simulation speed" />
+        <div className="speed-scale"><span>Slow</span><span>Fast</span></div>
+      </div>
 
       {lastRide && !lastRide.error && (
         <div className="result">
           {lastRide.status === "assigned"
-            ? <p className="ok">Rider #{lastRide.ride.id}: cab {lastRide.cab} on its way. Pickup in {lastRide.pickup_eta}, arrives in {lastRide.trip_eta}.</p>
+            ? <p className="ok">Rider #{lastRide.ride.id}: cab {lastRide.cab} on its way. Pickup in {lastRide.pickup_eta} min, arrives in {lastRide.trip_eta} min.</p>
             : <p>Rider #{lastRide.ride.id}: all cabs busy, queued at position {lastRide.position}.</p>}
         </div>
       )}
@@ -33,7 +35,7 @@ export default function SimPanel({ sim, applySim, running, setRunning, speed, se
       <h4>Active rides ({busy.length})</h4>
       <ul className="queue">
         {busy.map((c) => (
-          <li key={c.id}>Cab {c.id}: #{c.request.id} {c.request.pickup} → {c.request.drop}, {STATUS[c.status]}, done in {c.end_time - sim.clock}</li>
+          <li key={c.id}>Cab {c.id}: #{c.request.id} {c.request.pickup} → {c.request.drop}, {STATUS[c.status]}, {c.end_time - sim.clock} min left</li>
         ))}
       </ul>
 
@@ -44,7 +46,7 @@ export default function SimPanel({ sim, applySim, running, setRunning, speed, se
       <h4>Recent trips</h4>
       <ul className="queue">
         {sim.trips.map((t) => (
-          <li key={t.request}>#{t.request} cab {t.cab}: waited {t.wait}, drove {t.trip_time} (done at {t.dropped_at}) {t.priority === 0 && <span className="tag">urgent</span>}</li>
+          <li key={t.request}>#{t.request} cab {t.cab}: waited {t.wait} min, drove {t.trip_time} min {t.priority === 0 && <span className="tag">urgent</span>}</li>
         ))}
       </ul>
     </div>
