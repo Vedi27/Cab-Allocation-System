@@ -40,9 +40,9 @@ def assign_cab(request, cabs, adj):
         ranking.append({"cab": cab["id"], "distance": res["distance"]})
 
     if not ranking:
-        return {"cab_id": None, "ranking": [], "route": None, "implemented": IMPLEMENTED}
+        return {"cab_id": None, "ranking": [], "route": None, "comparisons": 0, "implemented": IMPLEMENTED}
 
-    ranking, _ = merge_sort(ranking, "distance")
+    ranking, comparisons = merge_sort(ranking, "distance")
     chosen = ranking[0]["cab"]                    # greedy: nearest free cab
     return {"cab_id": chosen, "ranking": ranking, "route": routes[chosen],
-            "implemented": IMPLEMENTED}
+            "comparisons": comparisons, "implemented": IMPLEMENTED}

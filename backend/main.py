@@ -270,6 +270,8 @@ def sim_quote(body: SimRideIn):
            "pickup_eta": pick["route"]["distance"] if pick["cab_id"] else None,
            "cab_path": pick["route"]["path"] if pick["cab_id"] else [],
            "fares": fares(trip["distance"]),
+           "ranking": pick["ranking"],                   # free cabs, nearest first (merge sort)
+           "sort_comparisons": pick["comparisons"],
            "queued": 0, "next_free_in": None}
     if pick["cab_id"] is None:
         out["queued"] = queue.size()
@@ -315,4 +317,37 @@ def benchmark():
             "dijkstra_ms": d_ms, "dijkstra_ops": d_res["operations"],
             "floyd_ms": f_ms, "floyd_ops": f_res["operations"],
         })
-    return {"results": rows}
+    return {"results": rows, "structures": benchmark_structures()}
+
+
+def benchmark_structures():
+    """Heap, merge sort and median of medians on random lists of growing size n.
+    ops = comparisons made. Dividing by the expected growth (n log n or n) should
+    give a roughly constant number if the theory holds."""
+    import math
+    import random
+    gen = random.Random(1)
+    rows = []
+    for n in [250, 500, 1000, 2000, 4000]:
+        values = [gen.randint(1, 10 * n) for _ in range(n)]
+        nlogn = n * math.log2(n)
+
+        q = rq.RequestQueue()                         # n pushes + n pops
+        start = time.perf_counter()
+        for i, v in enumerate(values):
+            q.push({"id": i, "priority": v % 2, "arrival": v})
+        while q.size():
+            q.pop()
+        heap_ms = round((time.perf_counter() - start) * 1000, 3)
+
+        items = [{"d": v} for v in values]
+        (_, merge_ops), merge_ms = timed(ms.merge_sort, items, "d")
+        (_, select_ops), select_ms = timed(kn.kth_smallest, values, n // 2)
+
+        rows.append({
+            "n": n,
+            "heap_ops": q.operations, "heap_ms": heap_ms, "heap_ratio": round(q.operations / nlogn, 2),
+            "merge_ops": merge_ops, "merge_ms": merge_ms, "merge_ratio": round(merge_ops / nlogn, 2),
+            "select_ops": select_ops, "select_ms": select_ms, "select_ratio": round(select_ops / n, 2),
+        })
+    return rows

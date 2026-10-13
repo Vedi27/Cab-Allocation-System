@@ -37,6 +37,23 @@ export default function SimPanel({ sim, applySim, speed, setSpeed, lastRide }) {
           Auto-assign waiting riders when a cab frees up
         </label>
 
+        <h3>Ride queue ({sim.waiting.length} waiting)</h3>
+        <p className="note small">Min-heap order: priority riders first, then whoever booked earliest.</p>
+        {sim.waiting.length === 0 ? (
+          <p className="note">No one is waiting. Riders queue here when every cab is busy.</p>
+        ) : (
+          <ol className="ride-list queue-order">
+            {sim.waiting.map((r, i) => (
+              <li key={r.id}>
+                <span className="queue-pos">{i + 1}</span>
+                <span>Rider #{r.id} <span className="muted">{r.pickup} → {r.drop}</span></span>
+                {r.priority === 0 && <span className="urgent">Priority</span>}
+                <span className="muted right">waiting {sim.clock - r.created} min{i === 0 ? ", next to be served" : ""}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
         <h3>Active rides ({busy.length})</h3>
         {busy.length === 0 ? (
           <p className="note">No cab is on a trip. Book a ride to send one out.</p>

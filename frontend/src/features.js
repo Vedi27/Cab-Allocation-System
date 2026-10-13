@@ -18,7 +18,8 @@ export const FEATURES = {
       "Book rides on the map and watch the cabs serve them in real time. Every request joins a min-heap queue: priority riders first, then whoever has waited longest. When a cab is free, Dijkstra measures each free cab's road distance to the pickup, merge sort ranks them, and the greedy choice sends the nearest one.",
     steps: [
       "Tap a pickup point on the map, then hover to preview the route and tap a destination.",
-      "Choose Standard or Priority (1.5× fare, served before standard riders) and book.",
+      "Choose Standard or Priority (1.5× fare, served before standard riders). Below the button, see how every free cab ranked.",
+      "If every cab is busy, the rider waits in the ride queue on the right, in min-heap order.",
       "The cab drives to the rider, then to the drop point. Road numbers are minutes of travel.",
     ],
     time: "Queue O(log n); dispatch O(k (V + E) log V + k log k), k = free cabs",
@@ -89,10 +90,11 @@ export const FEATURES = {
     unit: "Units I and II",
     icon: "chart",
     about:
-      "Runs Dijkstra and Floyd-Warshall on cities of growing size and records the operations and time taken. The measured growth can be checked against each algorithm's theoretical complexity.",
+      "Runs every algorithm on inputs of growing size and counts the operations. Dijkstra and Floyd-Warshall run on bigger and bigger cities; the heap, merge sort and median of medians run on longer and longer random lists. Each chart compares the measured work with the growth the theory predicts.",
     steps: [
-      "Run the benchmark on cities from 16 to 144 intersections.",
-      "Compare how fast each operation count grows as n increases.",
+      "Run the benchmark.",
+      "Check that each bar chart follows its dashed theory line (n log n, n or n³).",
+      "In the bottom table, each \"÷\" column stays roughly constant as n grows, which confirms the complexity.",
     ],
     time: "",
     space: "",

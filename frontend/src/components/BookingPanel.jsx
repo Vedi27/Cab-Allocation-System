@@ -73,6 +73,25 @@ export default function BookingPanel({ draft, setDraft, quote, onSubmit, lastRid
       </button>
       {hasPickup && <button className="link-btn" onClick={() => setDraft(null)}>Cancel (Esc)</button>}
 
+      {/* why this cab: free cabs ranked by road distance (Dijkstra + merge sort), greedy takes the first */}
+      {q && q.ranking && q.ranking.length > 0 && (
+        <div className="why-cab">
+          <div className="why-head">
+            <b>Why cab {q.ranking[0].cab}?</b>
+            <small>Free cabs ranked by road distance to your pickup. Merge sort: {q.sort_comparisons} comparisons. Greedy picks the nearest.</small>
+          </div>
+          <ol className="rank-list">
+            {q.ranking.map((x, i) => (
+              <li key={x.cab} className={i === 0 ? "chosen" : ""}>
+                <span>Cab {x.cab}</span>
+                <span className="bar" style={{ width: `${(x.distance / Math.max(q.ranking.at(-1).distance, 1)) * 100}%` }} />
+                <b>{x.distance} min</b>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {/* confirmation of the last booking */}
       {!hasPickup && lastRide && !lastRide.error && (
         <div className="booked">
