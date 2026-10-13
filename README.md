@@ -1,36 +1,51 @@
 # Cab Allocation System (DAA Innovative Assignment)
 
-React frontend + FastAPI backend. The app already runs end to end.
-Every algorithm is a **placeholder** in `backend/algorithms/` - you replace them one by one.
-The badges at the top of the page turn green when a file has `IMPLEMENTED = True`.
+React frontend + FastAPI backend. Every algorithm in `backend/algorithms/` is implemented.
+The left menu opens each feature; its explanation, steps and complexity show on the right.
+
+| Menu item | What it shows | Algorithm | Unit |
+| --- | --- | --- | --- |
+| Live Ride Dispatch | Book rides (Standard / Priority fares), cabs move in real time | Min-heap queue, Dijkstra, merge sort, greedy nearest cab | III, V |
+| Backup Cab Finder | k-th nearest free cab | Median of medians | III |
+| Shortest Route Finder | Fastest route between two points, animated | Dijkstra with a min-heap | V |
+| All-Pairs Distance Table | Precompute every distance, compare with Dijkstra | Floyd-Warshall | IV |
+| City Network | Adjacency list of any intersection | Weighted graph | III |
+| Algorithm Performance | Measured operations vs theoretical complexity | Empirical analysis | I, II |
 
 ## Folder structure
 
 ```
 cab-allocation/
 ├── backend/
-│   ├── main.py              routes only (calls the algorithms)  - done
-│   ├── graph.py             Feature 1: grid city, adjacency list - done
+│   ├── main.py              routes only (calls the algorithms)
+│   ├── graph.py             grid city as an adjacency list
+│   ├── simulation.py        time-based simulation (clock, cab trips, stats)
 │   ├── requirements.txt
 │   └── algorithms/
-│       ├── dijkstra.py        Feature 2   - TODO
-│       ├── floyd_warshall.py  Feature 3   - TODO
-│       ├── request_queue.py   Feature 4   - TODO (min-heap)
-│       ├── merge_sort.py      Feature 5   - TODO
-│       ├── assignment.py      Feature 5   - TODO (greedy)
-│       └── kth_nearest.py     Feature 11  - TODO (median of medians)
+│       ├── dijkstra.py        shortest route
+│       ├── floyd_warshall.py  all-pairs distances
+│       ├── request_queue.py   min-heap ride queue
+│       ├── merge_sort.py      ranking cabs by distance
+│       ├── assignment.py      greedy nearest-cab dispatch
+│       └── kth_nearest.py     median of medians
 └── frontend/
     └── src/
-        ├── App.jsx            layout, tabs, animation
-        ├── App.css            light theme colours
+        ├── App.jsx            layout, simulation timer, map state
+        ├── App.css            light theme (colours at the top)
+        ├── features.js        names, explanations and complexity of every feature
         ├── api.js             all calls to the backend
         └── components/
-            ├── CityMap.jsx         Feature 1 (map)
-            ├── RoutePanel.jsx      Feature 2
-            ├── PrecomputePanel.jsx Feature 3
-            ├── RequestsPanel.jsx   Features 4 + 5
-            ├── KthPanel.jsx        Feature 11
-            └── ComplexityPanel.jsx Feature 8
+            ├── Sidebar.jsx         left menu
+            ├── FeatureInfo.jsx     explanation block at the top of each panel
+            ├── PointPicker.jsx     selected points + result boxes
+            ├── CityMap.jsx         the map
+            ├── BookingPanel.jsx    Book a ride (Live Ride Dispatch)
+            ├── SimPanel.jsx        speed, active rides, fleet stats
+            ├── KthPanel.jsx        Backup Cab Finder
+            ├── RoutePanel.jsx      Shortest Route Finder
+            ├── PrecomputePanel.jsx All-Pairs Distance Table
+            ├── CityPanel.jsx       City Network
+            └── ComplexityPanel.jsx Algorithm Performance
 ```
 
 ## Run it (two terminals)
@@ -50,15 +65,3 @@ npm install
 npm run dev
 ```
 Open http://localhost:5173
-
-## The "black box" rule
-
-Each file in `algorithms/` has a comment block at the top with the exact
-INPUT and OUTPUT. As long as your function returns those keys, nothing else
-in the app needs to change. When you finish one:
-
-1. Replace the placeholder code with your algorithm.
-2. Set `IMPLEMENTED = True` at the top of the file.
-3. Refresh the page; its badge turns green and the map shows the real result.
-
-Suggested order: dijkstra → merge_sort → assignment → request_queue → floyd_warshall → kth_nearest.

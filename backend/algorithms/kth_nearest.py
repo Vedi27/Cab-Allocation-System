@@ -10,7 +10,7 @@ INPUT
 OUTPUT
     (kth_value, comparisons)
 
-TODO: replace the placeholder with median-of-medians:
+How it works:
       1. split values into groups of 5, find each group's median
       2. recursively find the median of those medians -> pivot
       3. partition into smaller / equal / larger than pivot

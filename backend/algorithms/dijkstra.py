@@ -17,8 +17,8 @@ OUTPUT (keep these exact keys, the frontend depends on them)
         "implemented": True
     }
 
-DONE.
-Hint: import heapq; heap holds (distance, node); keep dist{} and parent{};
+How it works:
+      uses Python's heapq as the min-heap; heap holds (distance, node); keep dist{} and parent{};
       append each popped node to visited; count every relaxation in operations;
       rebuild the path by following parent[] back from dst.
 """

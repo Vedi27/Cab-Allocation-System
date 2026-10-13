@@ -1,24 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import Sidebar from "./components/Sidebar";
 import CityMap from "./components/CityMap";
+import CityPanel from "./components/CityPanel";
 import RoutePanel from "./components/RoutePanel";
+import PrecomputePanel from "./components/PrecomputePanel";
 import KthPanel from "./components/KthPanel";
 import SimPanel from "./components/SimPanel";
 import BookingPanel from "./components/BookingPanel";
 import ComplexityPanel from "./components/ComplexityPanel";
+import { FEATURES } from "./features";
 import "./App.css";
 
-const TABS = ["Simulation", "Route", "k-th nearest", "Complexity"];
+// features where a map click picks ONE point (A) instead of A then B
+const SINGLE_POINT = ["city", "backup"];
 
 export default function App() {
   const [city, setCity] = useState(null);
-  const [status, setStatus] = useState({});
   const [error, setError] = useState(false);
-  const [tab, setTab] = useState("Simulation");
+  const [feature, setFeature] = useState("sim");      // which sidebar item is open
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [selected, setSelected] = useState({ a: null, b: null });
   const [waiting, setWaiting] = useState([]);
+  const isSim = feature === "sim";
 
-  // simulation (lives here so it keeps running when you switch tabs)
+  // simulation (lives here so it keeps running when you switch features)
   const [sim, setSim] = useState(null);
   const [speed, setSpeed] = useState(1);              // 1x = 4 ticks per second
   const [draft, setDraft] = useState(null);           // ride being created: {pickup, drop}
@@ -35,7 +41,6 @@ export default function App() {
 
   useEffect(() => {
     api.city().then(setCity).catch(() => setError(true));
-    api.status().then(setStatus).catch(() => {});
     api.requests().then((r) => setWaiting(r.waiting)).catch(() => {});
   }, []);
 
@@ -64,14 +69,14 @@ export default function App() {
   // live preview: route, trip time and nearest cab for the hovered (or chosen) drop
   const target = draft ? (draft.drop ?? hover) : null;
   useEffect(() => {
-    if (tab !== "Simulation" || !draft || target === null || target === draft.pickup) { setQuote(null); return; }
+    if (!isSim || !draft || target === null || target === draft.pickup) { setQuote(null); return; }
     let stale = false;
     const t = setTimeout(async () => {
       const q = await api.simQuote(draft.pickup, target);
       if (!stale && !q.detail) setQuote({ drop: target, ...q });
     }, 60);
     return () => { stale = true; clearTimeout(t); };
-  }, [tab, draft?.pickup, target]);
+  }, [isSim, draft?.pickup, target]);
 
   // path-finding preview: reveal Dijkstra's visited nodes one by one, then show the shortest path
   const [previewShown, setPreviewShown] = useState(0);
@@ -99,10 +104,10 @@ export default function App() {
     setHover(null);
   }
 
-  // "Show Algorithm" mode: reveal visited nodes one by one
+  // "Show algorithm" mode: reveal visited nodes one by one
   useEffect(() => {
     if (shownCount >= visited.length) return;
-    const t = setTimeout(() => setShownCount(shownCount + 1), 80);
+    const t = setTimeout(() => setShownCount(shownCount + 1), 60);
     return () => clearTimeout(t);
   }, [shownCount, visited]);
 
@@ -113,14 +118,27 @@ export default function App() {
   }
 
   function handleNodeClick(id) {
-    if (tab === "Simulation") {                       // click = create a rider
+    if (isSim) {                                      // click = create a rider
       if (!draft) setDraft({ pickup: id, drop: null });
       else if (id === draft.pickup) setDraft(null);
       else setDraft({ ...draft, drop: id });
       return;
     }
-    if (selected.a === null || selected.b !== null) setSelected({ a: id, b: null });
+    if (SINGLE_POINT.includes(feature) || selected.a === null || selected.b !== null) setSelected({ a: id, b: null });
     else setSelected({ a: selected.a, b: id });
+  }
+
+  function changeFeature(id) {
+    setFeature(id);
+    setDraft(null);
+    setSelected({ a: null, b: null });
+    showResult([], []);
+  }
+
+  function clearMap() {
+    setSelected({ a: null, b: null });
+    setDraft(null);
+    showResult([], []);
   }
 
   async function resetCity() {
@@ -133,70 +151,92 @@ export default function App() {
     showResult([], []);
   }
 
-  if (error) return <p className="center">Cannot reach the backend. Start it with: uvicorn main:app --reload --port 8000</p>;
-  if (!city) return <p className="center">Loading city...</p>;
+  if (error) {
+    return (
+      <div className="center-msg">
+        <h2>The backend isn't running</h2>
+        <p>Start it from the backend folder with <code>uvicorn main:app --reload --port 8000</code>, then refresh this page.</p>
+      </div>
+    );
+  }
+  if (!city) return <div className="center-msg"><p>Loading the city...</p></div>;
 
   const animationDone = shownCount >= visited.length;
   // riders to ring on the map: still waiting, or assigned but not yet picked up
   const riders = [...waiting, ...city.cabs.filter((c) => c.status === "to_pickup").map((c) => c.request)];
+  const setCabs = (cabs) => setCity({ ...city, cabs });
+  const freeCount = city.cabs.filter((c) => c.free).length;
+  const props = { city, selected, showResult, waiting, setWaiting, setCabs, freeCount };
+
+  const map = (
+    <div className="map-frame">
+      <CityMap
+        city={city}
+        selected={selected}
+        onNodeClick={handleNodeClick}
+        visited={isSim ? (quote ? quote.visited.slice(0, previewShown) : []) : visited.slice(0, shownCount)}
+        path={isSim ? [] : animationDone ? path : []}
+        riders={riders}
+        draft={isSim ? draft : null}
+        onNodeHover={setHover}
+        preview={isSim && draft && quote && previewShown >= quote.visited.length ? quote.path : []}
+        showPlans={isSim}
+      />
+    </div>
+  );
 
   return (
-    <div className="app">
-      <header>
-        <h1>Cab Allocation System</h1>
-        
-      </header>
+    <div className={navCollapsed ? "layout nav-collapsed" : "layout"}>
+      <Sidebar active={feature} onSelect={changeFeature} simRunning={active}
+               collapsed={navCollapsed} onToggle={() => setNavCollapsed(!navCollapsed)} />
 
-      <main className={tab === "Simulation" ? "with-booking" : ""}>
-        {tab === "Simulation" && (
-          <BookingPanel draft={draft} setDraft={setDraft} quote={quote} onSubmit={requestRide}
-                        lastRide={lastRide} dismissLast={() => setLastRide(null)} error={lastRide?.error} />
-        )}
-        <section className="card map-card">
-          <div className="map-toolbar">
-            <label><input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} /> Show algorithm (animate)</label>
-            <button className="secondary" onClick={() => { setSelected({ a: null, b: null }); showResult([], []); }}>Clear</button>
-            <button className="secondary" onClick={resetCity}>Reset city</button>
+      <main className="map-area">
+        <div className="map-toolbar">
+          <div>
+            <h1>City map</h1>
+            <p className="muted">
+              {isSim ? "Tap a pickup point, then a destination, to book a ride." : `Click intersections to choose points for ${FEATURES[feature].name}.`}
+            </p>
           </div>
-          <div className="map-wrap">
-            <CityMap
-              city={city}
-              selected={selected}
-              onNodeClick={handleNodeClick}
-              visited={tab === "Simulation" ? (quote ? quote.visited.slice(0, previewShown) : []) : visited.slice(0, shownCount)}
-              path={tab === "Simulation" ? [] : animationDone ? path : []}
-              riders={riders}
-              draft={tab === "Simulation" ? draft : null}
-              onNodeHover={setHover}
-              preview={tab === "Simulation" && draft && quote && previewShown >= quote.visited.length ? quote.path : []}
-              showPlans={tab === "Simulation"}
-            />
+          <div className="toolbar-actions">
+            <label className="toggle">
+              <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
+              Animate algorithm
+            </label>
+            <button className="ghost" onClick={clearMap}>Clear selection</button>
+            <button className="ghost" onClick={resetCity}>Reset city</button>
           </div>
-          <div className="legend">
-            <span><i className="dot a" /> A</span>
-            <span><i className="dot b" /> B</span>
-            <span><i className="dot visited" /> visited</span>
-            <span><i className="dot path" /> route</span>
-            <span><i className="sq" /> free cab</span>
-            <span><i className="sq pickup" /> cab heading to rider</span>
-            <span><i className="sq busy" /> cab on trip</span>
-            <span><i className="ring" /> waiting rider</span>
-          </div>
-        </section>
+        </div>
 
-        <section className="card panel">
-          <nav className="tabs">
-            {TABS.map((t) => (
-              <button key={t} className={t === tab ? "tab active" : "tab"} onClick={() => setTab(t)}>{t}</button>
-            ))}
-          </nav>
+        {isSim ? (
+          <div className="sim-grid">
+            <BookingPanel draft={draft} setDraft={setDraft} quote={quote} onSubmit={requestRide}
+                          lastRide={lastRide} dismissLast={() => setLastRide(null)} error={lastRide?.error} />
+            {map}
+          </div>
+        ) : map}
 
-          {tab === "Route" && <RoutePanel selected={selected} showResult={showResult} />}
-          {tab === "Simulation" && <SimPanel sim={sim} applySim={applySim} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
-          {tab === "k-th nearest" && <KthPanel selected={selected} />}
-          {tab === "Complexity" && <ComplexityPanel />}
-        </section>
+        <div className="legend">
+          <span><i className="dot a" /> {isSim ? "Pickup" : "Point A"}</span>
+          <span><i className="dot b" /> {isSim ? "Destination" : "Point B"}</span>
+          <span><i className="dot visited" /> Explored by Dijkstra</span>
+          <span><i className="line" /> Route</span>
+          <span><i className="sq" /> Free cab</span>
+          <span><i className="sq pickup" /> Cab heading to rider</span>
+          <span><i className="sq busy" /> Cab on trip</span>
+          <span><i className="ring" /> Waiting rider</span>
+          <span className="muted">Road numbers = minutes of travel</span>
+        </div>
       </main>
+
+      <aside className="panel" key={feature}>
+        {isSim && <SimPanel sim={sim} applySim={applySim} speed={speed} setSpeed={setSpeed} lastRide={lastRide} />}
+        {feature === "backup" && <KthPanel {...props} />}
+        {feature === "route" && <RoutePanel {...props} />}
+        {feature === "table" && <PrecomputePanel {...props} />}
+        {feature === "city" && <CityPanel {...props} />}
+        {feature === "performance" && <ComplexityPanel />}
+      </aside>
     </div>
   );
 }

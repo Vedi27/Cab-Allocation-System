@@ -1,54 +1,82 @@
 // Simulation side panel: speed, active rides and stats. The tick loop itself lives in App.jsx.
 // 1 time unit = 1 unit of road weight (the number written on each road).
 import { api } from "../api";
+import FeatureInfo from "./FeatureInfo";
+import { Stats } from "./PointPicker";
 
 const STATUS = { to_pickup: "heading to rider", on_trip: "on trip" };
 
 export default function SimPanel({ sim, applySim, speed, setSpeed, lastRide }) {
-  if (!sim) return <p>Loading...</p>;
+  if (!sim) return <FeatureInfo id="sim" />;
   const st = sim.stats;
   const changeConfig = (auto, spawn) => api.simConfig(auto, spawn).then(applySim);
   const busy = sim.cabs.filter((c) => !c.free);
 
   return (
-    <div>
-      <h3>Simulation</h3>
-      <p className="hint">Book rides from the panel on the left. Each road number is its travel time in minutes.</p>
-      <div className="speed">
-        <div className="speed-head"><span>Simulation speed</span></div>
-        <input type="range" min="0.5" max="5" step="0.5" value={speed}
-               style={{ "--fill": `${((speed - 0.5) / 4.5) * 100}%` }}
-               onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Simulation speed" />
-        <div className="speed-scale"><span>Slow</span><span>Fast</span></div>
-      </div>
-
-      {lastRide && !lastRide.error && (
-        <div className="result">
-          {lastRide.status === "assigned"
-            ? <p className="ok">Rider #{lastRide.ride.id}: cab {lastRide.cab} on its way. Pickup in {lastRide.pickup_eta} min, arrives in {lastRide.trip_eta} min.</p>
-            : <p>Rider #{lastRide.ride.id}: all cabs busy, queued at position {lastRide.position}.</p>}
+    <>
+      <FeatureInfo id="sim" />
+      <section className="try">
+        <h3>Simulation speed</h3>
+        <div className="speed">
+          <input type="range" min="0.5" max="5" step="0.5" value={speed}
+                 style={{ "--fill": `${((speed - 0.5) / 4.5) * 100}%` }}
+                 onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Simulation speed" />
+          <div className="speed-scale"><span>Slow</span><span>Fast</span></div>
         </div>
-      )}
 
-      <label><input type="checkbox" checked={sim.auto_assign} onChange={(e) => changeConfig(e.target.checked, 0)} /> Auto-assign waiting riders when a cab frees up</label>
+        {lastRide && !lastRide.error && (
+          <p className={lastRide.status === "assigned" ? "result-line ok" : "result-line"}>
+            {lastRide.status === "assigned"
+              ? `Rider #${lastRide.ride.id}: cab ${lastRide.cab} on its way. Pickup in ${lastRide.pickup_eta} min, arrives in ${lastRide.trip_eta} min.`
+              : `Rider #${lastRide.ride.id}: all cabs busy, queued at position ${lastRide.position}.`}
+          </p>
+        )}
 
-      <h4>Active rides ({busy.length})</h4>
-      <ul className="queue">
-        {busy.map((c) => (
-          <li key={c.id}>Cab {c.id}: #{c.request.id} {c.request.pickup} → {c.request.drop}, {STATUS[c.status]}, {c.end_time - sim.clock} min left</li>
-        ))}
-      </ul>
+        <label className="check">
+          <input type="checkbox" checked={sim.auto_assign} onChange={(e) => changeConfig(e.target.checked, 0)} />
+          Auto-assign waiting riders when a cab frees up
+        </label>
 
-      <h4>Stats</h4>
-      <p>Waiting: {sim.waiting.length} &nbsp; Completed: {st.completed} &nbsp; Busy: {st.busy_cabs}/{sim.cabs.length} ({st.utilisation}%)</p>
-      <p>Avg wait: {st.avg_wait ?? "-"} &nbsp; Max wait: {st.max_wait ?? "-"} &nbsp; Avg trip: {st.avg_trip ?? "-"}</p>
+        <h3>Active rides ({busy.length})</h3>
+        {busy.length === 0 ? (
+          <p className="note">No cab is on a trip. Book a ride to send one out.</p>
+        ) : (
+          <ul className="ride-list">
+            {busy.map((c) => (
+              <li key={c.id}>
+                <span className={c.status === "on_trip" ? "cab-chip trip" : "cab-chip pickup"}>Cab {c.id}</span>
+                <span>Rider #{c.request.id} <span className="muted">{c.request.pickup} → {c.request.drop}</span></span>
+                <span className="muted right">{STATUS[c.status]}, {c.end_time - sim.clock} min left</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      <h4>Recent trips</h4>
-      <ul className="queue">
-        {sim.trips.map((t) => (
-          <li key={t.request}>#{t.request} cab {t.cab}: waited {t.wait} min, drove {t.trip_time} min {t.priority === 0 && <span className="tag">urgent</span>}</li>
-        ))}
-      </ul>
-    </div>
+        <h3>Fleet</h3>
+        <Stats items={[
+          ["Waiting riders", sim.waiting.length],
+          ["Completed trips", st.completed],
+          ["Busy cabs", `${st.busy_cabs} of ${sim.cabs.length} (${st.utilisation}%)`],
+          ["Avg wait", st.avg_wait === null ? "-" : `${st.avg_wait} min`],
+          ["Max wait", st.max_wait === null ? "-" : `${st.max_wait} min`],
+          ["Avg trip", st.avg_trip === null ? "-" : `${st.avg_trip} min`],
+        ]} />
+
+        <h3>Recent trips</h3>
+        {sim.trips.length === 0 ? (
+          <p className="note">Finished trips will appear here.</p>
+        ) : (
+          <ul className="ride-list">
+            {sim.trips.map((t) => (
+              <li key={t.request}>
+                <span>#{t.request} cab {t.cab}</span>
+                <span className="muted">waited {t.wait} min, drove {t.trip_time} min</span>
+                {t.priority === 0 && <span className="urgent right">Priority</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }

@@ -12,7 +12,7 @@ OUTPUT
     sorted_list : new list sorted in ascending order of item[key]
     comparisons : number of comparisons made (for the complexity panel)
 
-TODO: replace the placeholder with your own recursive merge sort
+How it works:
       (split in half, sort each half, merge while counting comparisons).
 """
 

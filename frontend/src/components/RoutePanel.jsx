@@ -1,9 +1,12 @@
-// Feature 2 - shortest route with Dijkstra
+// Feature 2 - Shortest Route Finder (Dijkstra)
 import { useState } from "react";
 import { api } from "../api";
+import FeatureInfo from "./FeatureInfo";
+import PointPicker, { Stats } from "./PointPicker";
 
 export default function RoutePanel({ selected, showResult }) {
   const [result, setResult] = useState(null);
+  const ready = selected.a !== null && selected.b !== null;
 
   async function findRoute() {
     const r = await api.route(selected.a, selected.b);
@@ -11,25 +14,27 @@ export default function RoutePanel({ selected, showResult }) {
     showResult(r.visited, r.path);
   }
 
-  const ready = selected.a !== null && selected.b !== null;
-
   return (
-    <div>
-      <h3>Route finding (Dijkstra)</h3>
-      <p className="hint">Click two points on the map: A (start) and B (end).</p>
-      <p>A: <b>{selected.a ?? "-"}</b> &nbsp; B: <b>{selected.b ?? "-"}</b></p>
-      <button disabled={!ready} onClick={findRoute}>Find shortest route</button>
+    <>
+      <FeatureInfo id="route" />
+      <section className="try">
+        <h3>Find a route</h3>
+        <PointPicker selected={selected} labels={["Start", "End"]} />
+        <button className="primary" disabled={!ready} onClick={findRoute}>Find shortest route</button>
 
-      {result && (
-        <div className="result">
-          {!result.implemented && <p className="warn">Placeholder: write Dijkstra in backend/algorithms/dijkstra.py</p>}
-          <p>Path: {result.path.join(" → ")}</p>
-          <p>Distance (ETA): {result.distance ?? "-"}</p>
-          <p>Nodes visited: {result.visited.length}</p>
-          <p>Edge relaxations: {result.operations}</p>
-          <p>Time: {result.time_ms} ms</p>
-        </div>
-      )}
-    </div>
+        {result && (
+          <>
+            <Stats items={[
+              ["Travel time (ETA)", result.distance ?? "No route"],
+              ["Intersections on route", result.path.length],
+              ["Nodes explored", result.visited.length],
+              ["Edge relaxations", result.operations],
+              ["Time taken", `${result.time_ms} ms`],
+            ]} />
+            <p className="path-line">{result.path.join(" → ")}</p>
+          </>
+        )}
+      </section>
+    </>
   );
 }

@@ -14,8 +14,8 @@ OUTPUT (keep these exact keys)
         "implemented": True
     }
 
-TODO: replace the placeholder.
-Hint: start with dist[i][i] = 0, dist[u][v] = w for every edge, everything else = float('inf').
+How it works:
+      start with dist[i][i] = 0, dist[u][v] = w for every edge, everything else = float('inf').
       Then: for k: for i: for j: dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
 """
 

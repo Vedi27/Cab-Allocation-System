@@ -1,6 +1,6 @@
 """
 Feature 4 - Ride request queue
-Data structure: Min-heap / priority queue (write it yourselves, no heapq)   Unit III
+Data structure: Min-heap / priority queue (own array-based binary heap, no heapq)   Unit III
 push: O(log n)    pop: O(log n)    Space: O(n)
 
 Each request is a dict:
@@ -11,7 +11,7 @@ Smaller (priority, arrival) = served first.
 
 Keep the method names below - main.py calls them.
 
-TODO: replace the placeholder list with a real array-based binary heap:
+How it works:
       push  -> append at the end, then sift UP
       pop   -> swap root with last, remove last, then sift DOWN
       count comparisons in self.operations

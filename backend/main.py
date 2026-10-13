@@ -288,13 +288,16 @@ def kth_nearest(body: KthIn):
         if d is not None:
             pairs.append((d, cab["id"]))
     if not pairs:
-        return {"message": "Dijkstra must return distances first"}
+        return {"message": "No free cab right now. Wait for a trip to finish."}
     if not 1 <= body.k <= len(pairs):
-        return {"message": f"k must be between 1 and {len(pairs)}"}
+        return {"message": f"Only {len(pairs)} free cab(s) right now. Choose k between 1 and {len(pairs)}."}
 
     value, comparisons = kn.kth_smallest([d for d, _ in pairs], body.k)
     cab_id = next(cid for d, cid in pairs if d == value)
-    return {"k": body.k, "distance": value, "cab_id": cab_id,
+    cab_node = next(c["node"] for c in free if c["id"] == cab_id)
+    route = dj.dijkstra(city["adj"], cab_node, body.node)      # drawn on the map
+    return {"k": body.k, "distance": value, "cab_id": cab_id, "route": route,
+            "candidates": [{"cab": cid, "distance": d} for d, cid in pairs],
             "comparisons": comparisons, "implemented": kn.IMPLEMENTED}
 
 

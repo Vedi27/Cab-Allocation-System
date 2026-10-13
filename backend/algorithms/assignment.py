@@ -16,15 +16,12 @@ OUTPUT (keep these exact keys)
         "implemented": True
     }
 
-TODO: replace the placeholder:
+How it works:
       1. for each FREE cab, run dijkstra(adj, cab["node"], request["pickup"])
       2. build ranking = [{"cab": cab id, "distance": result["distance"]}, ...]
       3. ranking, _ = merge_sort(ranking, "distance")
       4. greedy choice: the first cab in ranking
 """
-from algorithms.dijkstra import dijkstra
-from algorithms.merge_sort import merge_sort  # noqa: F401  (you will use it)
-
 from algorithms.dijkstra import dijkstra
 from algorithms.merge_sort import merge_sort
 
