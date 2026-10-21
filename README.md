@@ -1,4 +1,4 @@
-# Cab Allocation System (DAA Innovative Assignment)
+# Cab Allocation System 
 
 React frontend + FastAPI backend. Every algorithm in `backend/algorithms/` is implemented.
 The left menu opens each feature; its explanation, steps and complexity show on the right.
